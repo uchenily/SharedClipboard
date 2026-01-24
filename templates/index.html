@@ -8,7 +8,7 @@
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
         <div class="flex items-center">
             <i class="fa fa-info-circle text-blue-500 mr-2"></i>
-            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 直接粘贴文本或图片到历史记录</span>
+            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本或图片 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
         </div>
     </div>
 
@@ -51,9 +51,14 @@
     <div class="bg-white p-4 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         <div class="flex justify-between items-center mb-2">
             <h3 id="modal-title" class="font-medium"></h3>
-            <button id="close-modal" class="text-gray-500 hover:text-gray-700">
-                <i class="fa fa-times text-xl"></i>
-            </button>
+            <div class="flex items-center space-x-2">
+                <button id="modal-copy-image" class="text-blue-500 hover:text-blue-700">
+                    <i class="fa fa-copy"></i> 复制图片
+                </button>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
         </div>
         <div class="flex justify-center items-center h-[calc(90vh-60px)]">
             <img id="modal-image" src="" alt="图片预览" class="max-w-full max-h-full object-contain">
@@ -80,11 +85,20 @@
     function initModalEvents() {
         const modal = document.getElementById('image-modal');
         const closeBtn = document.getElementById('close-modal');
+        const copyBtn = document.getElementById('modal-copy-image');
+        let currentImageChecksum = null;
 
         // 点击关闭按钮关闭模态框
         closeBtn.addEventListener('click', () => {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        });
+
+        // 点击复制按钮复制图片
+        copyBtn.addEventListener('click', () => {
+            if (currentImageChecksum) {
+                copyImageToClipboard(currentImageChecksum, copyBtn);
+            }
         });
 
         // 点击模态框外部关闭
@@ -94,6 +108,11 @@
                 modal.classList.remove('flex');
             }
         });
+
+        // 存储当前图片的checksum供复制使用
+        window.updateModalImageChecksum = function(checksum) {
+            currentImageChecksum = checksum;
+        };
     }
 
     // 初始化粘贴事件
@@ -227,6 +246,51 @@
         }, 3000);
     }
 
+    // 复制图片到剪贴板
+    async function copyImageToClipboard(checksum, buttonElement) {
+        try {
+            // 获取图片数据
+            const response = await fetch(`/api/download?checksum=${checksum}`);
+            if (!response.ok) {
+                throw new Error('获取图片失败');
+            }
+
+            const blob = await response.blob();
+            
+            // 检查是否支持Clipboard API
+            if (navigator.clipboard && navigator.clipboard.write) {
+                // 创建ClipboardItem对象
+                const clipboardItem = new ClipboardItem({
+                    [blob.type]: blob
+                });
+                
+                // 写入剪贴板
+                await navigator.clipboard.write([clipboardItem]);
+                
+                // 显示成功状态
+                const originalText = buttonElement.innerHTML;
+                buttonElement.innerHTML = '<i class="fa fa-check"></i> 已复制';
+                buttonElement.classList.remove('text-blue-500');
+                buttonElement.classList.add('text-green-500');
+                
+                setTimeout(() => {
+                    buttonElement.innerHTML = originalText;
+                    buttonElement.classList.remove('text-green-500');
+                    buttonElement.classList.add('text-blue-500');
+                }, 2000);
+                
+                showNotification('图片已复制到剪贴板', 'success');
+            } else {
+                // 浏览器不支持Clipboard API，提示用户使用下载
+                showNotification('您的浏览器不支持直接复制图片，请使用下载功能', 'error');
+            }
+            
+        } catch (error) {
+            console.error('复制图片失败:', error);
+            showNotification('复制图片失败: ' + error.message, 'error');
+        }
+    }
+
     // 加载历史记录
     function loadHistory() {
         const container = document.getElementById('history-list');
@@ -298,7 +362,7 @@
                 `;
             }
             else if (record.type === 'Image') {
-                // 图片类型：显示缩略图和预览按钮
+                // 图片类型：显示缩略图和复制按钮
                 const fileName = record.file_name || '未知图片';
 
                 previewContent = `
@@ -307,13 +371,17 @@
                              alt="${escapeHtml(fileName)}" 
                              class="max-h-32 max-w-full rounded border border-gray-200 cursor-pointer preview-img"
                              data-filename="${escapeHtml(fileName)}"
-                             data-src="/api/download?checksum=${record.checksum}">
+                             data-src="/api/download?checksum=${record.checksum}"
+                             data-checksum="${record.checksum}">
                         <p class="text-sm text-gray-600 mt-1">${escapeHtml(fileName)}</p>
                     </div>
                 `;
 
                 actionButton = `
-                    <a href="/api/download?checksum=${record.checksum}" class="text-blue-500 hover:text-blue-700" download>
+                    <button class="copy-image-btn text-blue-500 hover:text-blue-700" data-checksum="${record.checksum}">
+                        <i class="fa fa-copy"></i> 复制图片
+                    </button>
+                    <a href="/api/download?checksum=${record.checksum}" class="text-blue-500 hover:text-blue-700 ml-2" download>
                         <i class="fa fa-download"></i> 下载
                     </a>
                 `;
@@ -426,13 +494,27 @@
 
         // 绑定图片预览事件
         document.querySelectorAll('.preview-img').forEach(img => {
-            img.addEventListener('click', function () {
+            img.addEventListener('click', function (e) {
+                // 如果按住Ctrl/Cmd键，则复制图片到剪贴板
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const checksum = this.getAttribute('data-checksum');
+                    copyImageToClipboard(checksum, this.parentElement.querySelector('.copy-image-btn'));
+                    return;
+                }
+                
+                // 否则显示预览模态框
                 const modal = document.getElementById('image-modal');
                 const modalImg = document.getElementById('modal-image');
                 const modalTitle = document.getElementById('modal-title');
 
                 modalImg.src = this.getAttribute('data-src');
                 modalTitle.textContent = this.getAttribute('data-filename');
+                
+                // 更新模态框的图片checksum
+                if (window.updateModalImageChecksum) {
+                    window.updateModalImageChecksum(this.getAttribute('data-checksum'));
+                }
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -454,6 +536,14 @@
                     this.classList.remove('text-gray-300');
                     this.classList.add('text-yellow-500');
                 }
+            });
+        });
+
+        // 绑定复制图片按钮事件
+        document.querySelectorAll('.copy-image-btn').forEach(button => {
+            button.addEventListener('click', async function () {
+                const checksum = this.getAttribute('data-checksum');
+                await copyImageToClipboard(checksum, this);
             });
         });
     }
