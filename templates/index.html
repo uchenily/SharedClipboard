@@ -60,22 +60,24 @@
 </div>
 
 <!-- 图片预览模态框 -->
-<div id="image-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center">
-    <div class="bg-white p-4 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div class="flex justify-between items-center mb-2">
-            <h3 id="modal-title" class="font-medium"></h3>
-            <div class="flex items-center space-x-2">
-                <button id="modal-copy-image" class="text-blue-500 hover:text-blue-700">
-                    <i class="fa fa-copy"></i> 复制图片
+<div id="image-modal" class="fixed inset-0 bg-black z-50 hidden">
+    <!-- 顶部控制栏 -->
+    <div class="absolute top-0 left-0 right-0 bg-black/50 text-white p-4 z-10">
+        <div class="flex justify-between items-center">
+            <h3 id="modal-title" class="font-medium truncate max-w-md"></h3>
+            <div class="flex items-center space-x-4">
+                <button id="modal-copy-image" class="text-white hover:text-blue-300 transition-colors">
+                    <i class="fa fa-copy mr-2"></i>复制
                 </button>
-                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                <button id="close-modal" class="text-white hover:text-gray-300 transition-colors">
                     <i class="fa fa-times text-xl"></i>
                 </button>
             </div>
         </div>
-        <div class="flex justify-center items-center h-[calc(90vh-60px)]">
-            <img id="modal-image" src="" alt="图片预览" class="max-w-full max-h-full object-contain">
-        </div>
+    </div>
+    <!-- 图片容器 -->
+    <div class="w-full h-full flex items-center justify-center p-4">
+        <img id="modal-image" src="" alt="图片预览" class="max-w-full max-h-full object-contain">
     </div>
 </div>
 {% endblock %}
@@ -101,12 +103,12 @@
         const modal = document.getElementById('image-modal');
         const closeBtn = document.getElementById('close-modal');
         const copyBtn = document.getElementById('modal-copy-image');
+        const modalImg = document.getElementById('modal-image');
         let currentImageChecksum = null;
 
         // 点击关闭按钮关闭模态框
         closeBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            closeModal();
         });
 
         // 点击复制按钮复制图片
@@ -116,18 +118,36 @@
             }
         });
 
-        // 点击模态框外部关闭
+        // ESC键关闭模态框
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+        // 点击模态框外部关闭（点击背景黑色区域）
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
+                closeModal();
             }
+        });
+
+        // 点击图片也能关闭模态框
+        modalImg.addEventListener('click', () => {
+            closeModal();
         });
 
         // 存储当前图片的checksum供复制使用
         window.updateModalImageChecksum = function(checksum) {
             currentImageChecksum = checksum;
         };
+
+        // 关闭模态框的函数
+        function closeModal() {
+            modal.classList.add('hidden');
+            // 清空图片src以释放内存
+            modalImg.src = '';
+        }
     }
 
     // 初始化粘贴事件
@@ -829,7 +849,6 @@
                 }
 
                 modal.classList.remove('hidden');
-                modal.classList.add('flex');
             });
         });
 
