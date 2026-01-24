@@ -2,6 +2,18 @@
 
 {% block content %}
 <div class="mb-6">
+    <!-- 拖拽区域 -->
+    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 mb-6 text-center transition-all duration-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer group">
+        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <i class="fa fa-cloud-upload text-white text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">拖拽文件到此处上传</h3>
+        <p class="text-gray-500 text-sm mb-6">支持文本、图片和任意文件类型 • 支持批量上传</p>
+        <button class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg">
+            <i class="fa fa-folder-open mr-2"></i>选择文件
+        </button>
+    </div>
+
     <h2 class="text-xl font-bold mb-4">剪贴板历史记录</h2>
     
     <!-- 粘贴和拖拽提示 -->
@@ -28,18 +40,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- 拖拽区域 -->
-    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 mb-6 text-center transition-all duration-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer group">
-        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-            <i class="fa fa-cloud-upload text-white text-2xl"></i>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-800 mb-2">拖拽文件到此处上传</h3>
-        <p class="text-gray-500 text-sm mb-6">支持文本、图片和任意文件类型 • 支持批量上传</p>
-        <button class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg">
-            <i class="fa fa-folder-open mr-2"></i>选择文件
-        </button>
     </div>
     
     <!-- 隐藏的文件输入元素 -->
