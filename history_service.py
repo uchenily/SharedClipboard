@@ -112,6 +112,7 @@ def main():
         observer.stop()
         event_handler.stop()  # 确保停止后台线程
     observer.join()
+    print("监控服务结束...")
 
 ###################
 ## 监控文件夹大小并删除最旧的文件

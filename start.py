@@ -25,9 +25,10 @@ def start_web():
     web_server.socketio.run(web_server.app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)  # 禁用重载器
 
 def start_monitor_backup_folder(): # 监控，避免文件夹过大
-    while not exit_event.is_set():
-        history_service.monitor_backup_folder(Config.FOLDER_TO_MONITOR, Config.MAX_FOLDER_SIZE, Config.CHECK_INTERVAL)
-        time.sleep(0.1)  # 避免CPU占用过高
+    # while not exit_event.is_set():
+    #     history_service.monitor_backup_folder(Config.FOLDER_TO_MONITOR, Config.MAX_FOLDER_SIZE, Config.CHECK_INTERVAL)
+    #     time.sleep(0.1)  # 避免CPU占用过高
+    history_service.monitor_backup_folder(Config.FOLDER_TO_MONITOR, Config.MAX_FOLDER_SIZE, Config.CHECK_INTERVAL)
 
 #########################
 
@@ -38,9 +39,9 @@ def signal_handler(sig, frame):
     
     # 等待服务关闭（最多1秒）
     print("等待服务线程结束...")
-    monitor_thread.join(timeout=1.0)
-    web_thread.join(timeout=1.0)
-    web_thread.join(timeout=1.0)
+    # monitor_thread.join(timeout=1.0)
+    # web_thread.join(timeout=1.0)
+    # monitor_backup_folder.join(timeout=1.0)
     
     # 强制退出（如果线程未正常结束）
     if monitor_thread.is_alive() or web_thread.is_alive():
