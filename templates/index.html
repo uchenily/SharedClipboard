@@ -248,17 +248,25 @@
 
     // 复制图片到剪贴板
     async function copyImageToClipboard(checksum, buttonElement) {
+        console.log('开始复制图片，checksum:', checksum, '按钮:', buttonElement);
+        
         try {
+            if (!checksum) {
+                throw new Error('图片checksum为空');
+            }
+            
             // 获取图片数据
             const response = await fetch(`/api/download?checksum=${checksum}`);
             if (!response.ok) {
-                throw new Error('获取图片失败');
+                throw new Error('获取图片失败: ' + response.statusText);
             }
 
             const blob = await response.blob();
+            console.log('获取图片blob成功，类型:', blob.type, '大小:', blob.size);
             
             // 检查是否支持Clipboard API
             if (navigator.clipboard && navigator.clipboard.write) {
+                console.log('浏览器支持Clipboard API，开始复制...');
                 // 创建ClipboardItem对象
                 const clipboardItem = new ClipboardItem({
                     [blob.type]: blob
@@ -266,22 +274,29 @@
                 
                 // 写入剪贴板
                 await navigator.clipboard.write([clipboardItem]);
+                console.log('复制到剪贴板成功');
                 
-                // 显示成功状态
-                const originalText = buttonElement.innerHTML;
-                buttonElement.innerHTML = '<i class="fa fa-check"></i> 已复制';
-                buttonElement.classList.remove('text-blue-500');
-                buttonElement.classList.add('text-green-500');
-                
-                setTimeout(() => {
-                    buttonElement.innerHTML = originalText;
-                    buttonElement.classList.remove('text-green-500');
-                    buttonElement.classList.add('text-blue-500');
-                }, 2000);
+                // 如果有按钮元素，显示成功状态
+                if (buttonElement && buttonElement.innerHTML) {
+                    console.log('更新按钮状态');
+                    const originalText = buttonElement.innerHTML;
+                    buttonElement.innerHTML = '<i class="fa fa-check"></i> 已复制';
+                    buttonElement.classList.remove('text-blue-500');
+                    buttonElement.classList.add('text-green-500');
+                    
+                    setTimeout(() => {
+                        if (buttonElement) {
+                            buttonElement.innerHTML = originalText;
+                            buttonElement.classList.remove('text-green-500');
+                            buttonElement.classList.add('text-blue-500');
+                        }
+                    }, 2000);
+                }
                 
                 showNotification('图片已复制到剪贴板', 'success');
             } else {
                 // 浏览器不支持Clipboard API，提示用户使用下载
+                console.log('浏览器不支持Clipboard API');
                 showNotification('您的浏览器不支持直接复制图片，请使用下载功能', 'error');
             }
             
@@ -498,8 +513,27 @@
                 // 如果按住Ctrl/Cmd键，则复制图片到剪贴板
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
+                    console.log('Ctrl+点击图片，开始复制...');
                     const checksum = this.getAttribute('data-checksum');
-                    copyImageToClipboard(checksum, this.parentElement.querySelector('.copy-image-btn'));
+                    console.log('图片checksum:', checksum);
+                    
+                    if (!checksum) {
+                        console.error('未找到图片checksum属性');
+                        showNotification('图片信息错误，无法复制', 'error');
+                        return;
+                    }
+                    
+                    // 查找复制按钮，使用更安全的选择器
+                    const copyBtn = this.closest('.bg-white').querySelector('.copy-image-btn');
+                    console.log('找到复制按钮:', copyBtn);
+                    
+                    if (copyBtn) {
+                        copyImageToClipboard(checksum, copyBtn);
+                    } else {
+                        console.log('未找到复制按钮，使用直接复制');
+                        // 如果找不到按钮，直接复制但不显示按钮状态
+                        copyImageToClipboard(checksum, null);
+                    }
                     return;
                 }
                 

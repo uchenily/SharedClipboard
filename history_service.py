@@ -239,7 +239,8 @@ def monitor_backup_folder(folder_path, max_size_str, check_interval=60):
 
 if __name__ == "monitor folder":
     # 配置参数 - 现在可以直接使用带单位的字符串
-    FOLDER_TO_MONITOR = "/path/to/your/folder"  # 替换为要监控的文件夹路径
+    # FOLDER_TO_MONITOR = "/path/to/your/folder"  # 替换为要监控的文件夹路径
+    FOLDER_TO_MONITOR = "/tmp"  # 替换为要监控的文件夹路径
     MAX_FOLDER_SIZE = "1GB"  # 支持格式: "100MB", "2GB", "512KB", "1024B"
     CHECK_INTERVAL = 60  # 检查间隔（秒）
     

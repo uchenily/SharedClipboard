@@ -12,10 +12,11 @@ exit_event = threading.Event()
 
 def start_monitor():
     """启动剪贴板监控服务（支持优雅退出）"""
-    while not exit_event.is_set():
-        # 替换为您的实际监控逻辑
-        history_service.main()
-        time.sleep(0.1)  # 避免CPU占用过高
+    # while not exit_event.is_set():
+    #     # 替换为您的实际监控逻辑
+    #     history_service.main()
+    #     time.sleep(0.1)  # 避免CPU占用过高
+    history_service.main()
 
 def start_web():
     """启动 Web 服务"""
