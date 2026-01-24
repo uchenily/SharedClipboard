@@ -29,10 +29,10 @@
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
         <!-- 筛选按钮组 -->
         <div class="flex flex-wrap gap-2">
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100">全部类型</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100">文本</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100">图片</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100">文件</button>
+            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="all">全部类型</button>
+            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="Text">文本</button>
+            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="Image">图片</button>
+            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="File">文件</button>
         </div>
     </div>
 
@@ -93,6 +93,7 @@
         initModalEvents();
         initPasteEvents();
         initDragAndDropEvents();
+        initFilterEvents();
     });
 
     // 初始化模态框事件
@@ -310,6 +311,56 @@
         if (processingDiv) {
             processingDiv.remove();
         }
+    }
+
+    // 初始化筛选事件
+    function initFilterEvents() {
+        const filterButtons = document.querySelectorAll('.filter-toggle');
+        let currentFilter = 'all'; // 默认显示全部类型
+        let allRecords = []; // 存储所有记录
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filterType = this.getAttribute('data-type');
+                
+                // 更新按钮状态
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('bg-primary/10', 'text-primary');
+                });
+                this.classList.add('bg-primary/10', 'text-primary');
+                
+                currentFilter = filterType;
+                
+                // 筛选并重新渲染记录
+                filterAndRenderRecords(filterType);
+            });
+        });
+        
+        // 将筛选后的记录渲染函数暴露给全局
+        window.filterAndRenderRecords = function(filterType) {
+            const container = document.getElementById('history-list');
+            const records = container.querySelectorAll('.bg-white.rounded-lg.shadow-sm');
+            
+            records.forEach(record => {
+                const recordType = record.querySelector('.text-sm.font-medium.text-gray-900')?.textContent;
+                
+                if (filterType === 'all') {
+                    record.style.display = 'block';
+                } else {
+                    record.style.display = recordType === filterType ? 'block' : 'none';
+                }
+            });
+            
+            // 更新显示的记录数量
+            const visibleRecords = Array.from(records).filter(record => record.style.display !== 'none');
+            updateVisibleCount(visibleRecords.length);
+        };
+        
+        // 更新可见记录数量
+        window.updateVisibleCount = function(count) {
+            // 可以在这里添加显示记录数量的逻辑
+            console.log(`显示 ${count} 条记录`);
+        };
     }
 
     // 处理粘贴事件
@@ -669,7 +720,7 @@
 
             // 构建记录卡片
             html += `
-            <div class="bg-white rounded-lg shadow-sm p-3 mb-2 hover:shadow-md transition-custom">
+            <div class="bg-white rounded-lg shadow-sm p-3 mb-2 hover:shadow-md transition-custom" data-type="${record.type}">
                 <div class="flex justify-between items-start">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center">
