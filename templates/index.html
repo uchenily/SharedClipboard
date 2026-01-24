@@ -13,11 +13,17 @@
     </div>
 
     <!-- 拖拽区域 -->
-    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center transition-colors duration-200 hover:border-blue-400">
+    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center transition-colors duration-200 hover:border-blue-400 cursor-pointer">
         <i class="fa fa-cloud-upload text-4xl text-gray-400 mb-4"></i>
         <p class="text-gray-600 text-lg mb-2">拖拽文件到此处上传</p>
-        <p class="text-gray-500 text-sm">支持文本、图片和任意文件类型</p>
+        <p class="text-gray-500 text-sm mb-4">支持文本、图片和任意文件类型</p>
+        <button class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+            <i class="fa fa-folder-open mr-2"></i>选择文件
+        </button>
     </div>
+    
+    <!-- 隐藏的文件输入元素 -->
+    <input type="file" id="file-input" multiple class="hidden" accept="*/*">
 
     <!-- 筛选器 -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
@@ -131,6 +137,7 @@
     // 初始化拖拽事件
     function initDragAndDropEvents() {
         const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
         
         // 防止浏览器默认行为
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -149,6 +156,18 @@
         
         // 处理拖拽的文件
         dropZone.addEventListener('drop', handleDrop, false);
+        
+        // 点击拖拽区域触发文件选择
+        dropZone.addEventListener('click', function(e) {
+            // 防止按钮点击时重复触发
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                e.preventDefault();
+            }
+            fileInput.click();
+        });
+        
+        // 处理文件选择
+        fileInput.addEventListener('change', handleFileSelect, false);
     }
 
     // 阻止默认行为
@@ -180,6 +199,21 @@
                 await handleDroppedFile(file);
             }
         }
+    }
+
+    // 处理选择的文件
+    async function handleFileSelect(e) {
+        const files = e.target.files;
+        
+        if (files.length > 0) {
+            // 处理所有选择的文件
+            for (let file of files) {
+                await handleDroppedFile(file);
+            }
+        }
+        
+        // 清空input，允许重复选择同一文件
+        e.target.value = '';
     }
 
     // 处理单个拖拽的文件
