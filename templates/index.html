@@ -4,12 +4,19 @@
 <div class="mb-6">
     <h2 class="text-xl font-bold mb-4">剪贴板历史记录</h2>
     
-    <!-- 粘贴提示 -->
+    <!-- 粘贴和拖拽提示 -->
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
         <div class="flex items-center">
             <i class="fa fa-info-circle text-blue-500 mr-2"></i>
-            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本、图片或文件 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
+            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本、图片或文件 | 也可以直接拖拽文件到此处 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
         </div>
+    </div>
+
+    <!-- 拖拽区域 -->
+    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center transition-colors duration-200 hover:border-blue-400">
+        <i class="fa fa-cloud-upload text-4xl text-gray-400 mb-4"></i>
+        <p class="text-gray-600 text-lg mb-2">拖拽文件到此处上传</p>
+        <p class="text-gray-500 text-sm">支持文本、图片和任意文件类型</p>
     </div>
 
     <!-- 筛选器 -->
@@ -79,6 +86,7 @@
         initPaginationEvents();
         initModalEvents();
         initPasteEvents();
+        initDragAndDropEvents();
     });
 
     // 初始化模态框事件
@@ -118,6 +126,156 @@
     // 初始化粘贴事件
     function initPasteEvents() {
         document.addEventListener('paste', handlePaste);
+    }
+
+    // 初始化拖拽事件
+    function initDragAndDropEvents() {
+        const dropZone = document.getElementById('drop-zone');
+        
+        // 防止浏览器默认行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        // 高亮拖拽区域
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        // 处理拖拽的文件
+        dropZone.addEventListener('drop', handleDrop, false);
+    }
+
+    // 阻止默认行为
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // 高亮拖拽区域
+    function highlight(e) {
+        document.getElementById('drop-zone').classList.add('border-blue-500', 'bg-blue-50');
+        document.getElementById('drop-zone').classList.remove('border-gray-300');
+    }
+
+    // 取消高亮
+    function unhighlight(e) {
+        document.getElementById('drop-zone').classList.remove('border-blue-500', 'bg-blue-50');
+        document.getElementById('drop-zone').classList.add('border-gray-300');
+    }
+
+    // 处理拖拽的文件
+    async function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            // 处理所有拖拽的文件
+            for (let file of files) {
+                await handleDroppedFile(file);
+            }
+        }
+    }
+
+    // 处理单个拖拽的文件
+    async function handleDroppedFile(file) {
+        // 显示处理中提示
+        showDropProcessing(file.name);
+
+        try {
+            if (file.type.startsWith('image/')) {
+                // 处理图片文件
+                await handleImageDrop(file);
+            } else if (file.type.startsWith('text/')) {
+                // 处理文本文件
+                await handleTextFileDrop(file);
+            } else {
+                // 处理其他文件类型
+                await handleFileDrop(file);
+            }
+        } catch (error) {
+            console.error('文件拖拽错误:', error);
+            showNotification(`处理文件 ${file.name} 失败: ${error.message}`, 'error');
+        } finally {
+            hideDropProcessing();
+        }
+    }
+
+    // 处理图片文件拖拽
+    async function handleImageDrop(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'Image');
+
+        const response = await fetch('/api/paste/image', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showNotification(`图片 ${file.name} 已添加到剪贴板历史`, 'success');
+            // 刷新历史记录，显示最新内容
+            currentOffset = 0;
+            loadHistory();
+        } else {
+            showNotification(`添加图片失败: ${result.error}`, 'error');
+        }
+    }
+
+    // 处理文本文件拖拽
+    async function handleTextFileDrop(file) {
+        try {
+            const text = await file.text();
+            await handleTextPaste(text);
+            showNotification(`文本文件 ${file.name} 内容已添加到剪贴板历史`, 'success');
+        } catch (error) {
+            showNotification(`读取文本文件 ${file.name} 失败`, 'error');
+        }
+    }
+
+    // 处理其他文件类型拖拽
+    async function handleFileDrop(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'File');
+
+        const response = await fetch('/api/paste/file', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showNotification(`文件 ${file.name} 已添加到剪贴板历史`, 'success');
+            // 刷新历史记录，显示最新内容
+            currentOffset = 0;
+            loadHistory();
+        } else {
+            showNotification(`添加文件失败: ${result.error}`, 'error');
+        }
+    }
+
+    // 显示拖拽处理中状态
+    function showDropProcessing(fileName) {
+        const processingDiv = document.createElement('div');
+        processingDiv.id = 'drop-processing';
+        processingDiv.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        processingDiv.innerHTML = `<i class="fa fa-spinner fa-spin mr-2"></i>正在处理文件: ${fileName}`;
+        document.body.appendChild(processingDiv);
+    }
+
+    // 隐藏拖拽处理中状态
+    function hideDropProcessing() {
+        const processingDiv = document.getElementById('drop-processing');
+        if (processingDiv) {
+            processingDiv.remove();
+        }
     }
 
     // 处理粘贴事件
