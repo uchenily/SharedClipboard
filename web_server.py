@@ -263,6 +263,59 @@ def paste_file():
         print(f"文件粘贴错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# 删除记录API
+@app.route('/api/delete/<string:uuid>', methods=['DELETE'])
+def delete_record(uuid):
+    try:
+        from database import ClipboardHistory, BackupFile, init_db
+        from sqlmodel import Session, select
+        
+        engine = init_db()
+        
+        with Session(engine) as session:
+            # 查找记录
+            record = session.exec(select(ClipboardHistory).where(ClipboardHistory.uuid == uuid)).first()
+            
+            if not record:
+                return jsonify({'success': False, 'error': '记录不存在'}), 404
+            
+            # 检查是否有其他记录使用相同的备份文件
+            if record.checksum:
+                other_records = session.exec(
+                    select(ClipboardHistory).where(
+                        ClipboardHistory.checksum == record.checksum,
+                        ClipboardHistory.uuid != uuid
+                    )
+                ).all()
+                
+                # 如果没有其他记录使用该备份文件，删除备份文件
+                if not other_records:
+                    backup_file = session.exec(
+                        select(BackupFile).where(BackupFile.checksum == record.checksum)
+                    ).first()
+                    
+                    if backup_file:
+                        # 删除物理文件
+                        import os
+                        try:
+                            if os.path.exists(backup_file.filepath):
+                                os.remove(backup_file.filepath)
+                        except Exception as e:
+                            print(f"删除备份文件失败: {e}")
+                        
+                        # 删除备份文件记录
+                        session.delete(backup_file)
+            
+            # 删除历史记录
+            session.delete(record)
+            session.commit()
+            
+        return jsonify({'success': True, 'message': '记录已删除'})
+            
+    except Exception as e:
+        print(f"删除记录错误: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 ##############################################################################
 
 @app.route('/history')

@@ -559,6 +559,105 @@
         }
     }
 
+    // 显示删除确认对话框
+    async function confirmDelete() {
+        return new Promise((resolve) => {
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fa fa-exclamation-triangle text-red-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">确认删除</h3>
+                            <p class="text-sm text-gray-600">此操作无法撤销，确定要删除这条记录吗？</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button class="cancel-btn px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                            取消
+                        </button>
+                        <button class="confirm-btn px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                            确认删除
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 绑定事件
+            const cancelBtn = modal.querySelector('.cancel-btn');
+            const confirmBtn = modal.querySelector('.confirm-btn');
+            
+            cancelBtn.addEventListener('click', () => {
+                modal.remove();
+                resolve(false);
+            });
+            
+            confirmBtn.addEventListener('click', () => {
+                modal.remove();
+                resolve(true);
+            });
+            
+            // ESC键取消
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                    resolve(false);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        });
+    }
+
+    // 删除记录
+    async function deleteRecord(uuid, cardElement) {
+        try {
+            // 显示删除中状态
+            const originalOpacity = cardElement.style.opacity;
+            cardElement.style.opacity = '0.5';
+            cardElement.style.pointerEvents = 'none';
+            
+            const response = await fetch(`/api/delete/${uuid}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 移除卡片动画
+                cardElement.style.transform = 'translateX(100%)';
+                cardElement.style.opacity = '0';
+                cardElement.style.transition = 'all 0.3s ease-out';
+                
+                setTimeout(() => {
+                    cardElement.remove();
+                    
+                    // 更新总记录数
+                    totalRecords = Math.max(0, totalRecords - 1);
+                    updatePaginationUI();
+                    
+                    showNotification('记录已删除', 'success');
+                }, 300);
+            } else {
+                // 恢复卡片状态
+                cardElement.style.opacity = originalOpacity;
+                cardElement.style.pointerEvents = 'auto';
+                showNotification('删除失败: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('删除记录错误:', error);
+            cardElement.style.opacity = originalOpacity;
+            cardElement.style.pointerEvents = 'auto';
+            showNotification('删除失败', 'error');
+        }
+    }
+
     // 显示通知
     function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
@@ -741,9 +840,14 @@
                 `;
 
                 actionButton = `
-                    <button class="copy-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-clipboard="${escapeHtml(content)}" title="复制文本">
-                        <i class="fa fa-clipboard"></i>
-                    </button>
+                    <div class="flex items-center space-x-1">
+                        <button class="copy-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-clipboard="${escapeHtml(content)}" title="复制文本">
+                            <i class="fa fa-clipboard"></i>
+                        </button>
+                        <button class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-uuid="${record.uuid}" title="删除记录">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
                 `;
             }
             else if (record.type === 'Image') {
@@ -769,12 +873,17 @@
                 `;
 
                 actionButton = `
-                    <button class="copy-image-btn text-green-500 hover:text-green-700 hover:bg-green-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-checksum="${record.checksum}" title="复制图片">
-                        <i class="fa fa-clone"></i>
-                    </button>
-                    <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center ml-2" download title="下载图片">
-                        <i class="fa fa-download"></i>
-                    </a>
+                    <div class="flex items-center space-x-1">
+                        <button class="copy-image-btn text-green-500 hover:text-green-700 hover:bg-green-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-checksum="${record.checksum}" title="复制图片">
+                            <i class="fa fa-clone"></i>
+                        </button>
+                        <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" download title="下载图片">
+                            <i class="fa fa-download"></i>
+                        </a>
+                        <button class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-uuid="${record.uuid}" title="删除记录">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
                 `;
             }
             else if (record.type === 'File' || record.type === 'Group') {
@@ -801,9 +910,14 @@
                 `;
 
                 actionButton = `
-                    <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" download title="下载文件">
-                        <i class="fa fa-download"></i>
-                    </a>
+                    <div class="flex items-center space-x-1">
+                        <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" download title="下载文件">
+                            <i class="fa fa-download"></i>
+                        </a>
+                        <button class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-uuid="${record.uuid}" title="删除记录">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
                 `;
             }
 
@@ -988,6 +1102,19 @@
                     this.classList.remove('opacity-50', 'cursor-not-allowed');
                     this.disabled = false;
                 }, 2000);
+            });
+        });
+
+        // 绑定删除按钮事件
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async function () {
+                const uuid = this.getAttribute('data-uuid');
+                const card = this.closest('.bg-white.rounded-lg');
+                
+                // 显示确认对话框
+                if (await confirmDelete()) {
+                    await deleteRecord(uuid, card);
+                }
             });
         });
     }
