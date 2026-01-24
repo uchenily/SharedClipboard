@@ -166,6 +166,76 @@ def paste_image():
         print(f"图片粘贴错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# 粘贴文件API
+@app.route('/api/paste/file', methods=['POST'])
+def paste_file():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': '没有文件'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': '文件名为空'}), 400
+        
+        # 读取文件内容并计算MD5
+        file_bytes = file.read()
+        import hashlib
+        checksum = hashlib.md5(file_bytes).hexdigest()
+        
+        # 保存文件到备份目录
+        from config import Config
+        import os
+        import uuid as uuid_lib
+        
+        # 生成唯一文件名
+        file_ext = os.path.splitext(file.filename)[1] if file.filename else ''
+        unique_filename = f"{uuid_lib.uuid4()}{file_ext}"
+        backup_path = os.path.join(Config.BACKUP_DIR, unique_filename)
+        
+        # 确保备份目录存在
+        os.makedirs(Config.BACKUP_DIR, exist_ok=True)
+        
+        # 保存文件
+        with open(backup_path, 'wb') as f:
+            f.write(file_bytes)
+        
+        # 构造JSON数据格式
+        json_data = {
+            "Type": "File",
+            "Clipboard": file.filename,  # 对于文件，Clipboard字段存储原始文件名
+            "File": unique_filename,
+            "From": "Web",
+            "Tag": "手动粘贴"
+        }
+        
+        # 添加到数据库
+        from database import add_history_item_from_json, init_db, BackupFile
+        from sqlmodel import Session, select
+        engine = init_db()
+        
+        # 检查备份文件是否已存在
+        with Session(engine) as session:
+            exists = session.exec(select(BackupFile).where(BackupFile.checksum == checksum)).first()
+            if not exists:
+                backup = BackupFile(
+                    checksum=checksum,
+                    filepath=backup_path,
+                    size=len(file_bytes)
+                )
+                session.add(backup)
+                session.commit()
+        
+        new_id = add_history_item_from_json(json_data, engine)
+        
+        if new_id:
+            return jsonify({'success': True, 'id': new_id})
+        else:
+            return jsonify({'success': False, 'error': '添加失败'}), 500
+            
+    except Exception as e:
+        print(f"文件粘贴错误: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 ##############################################################################
 
 @app.route('/history')

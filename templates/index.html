@@ -8,7 +8,7 @@
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
         <div class="flex items-center">
             <i class="fa fa-info-circle text-blue-500 mr-2"></i>
-            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本或图片 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
+            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本、图片或文件 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
         </div>
     </div>
 
@@ -143,6 +143,12 @@
                 await handleTextPaste(text);
                 processed = true;
                 break;
+            } else if (item.kind === 'file') {
+                // 处理文件粘贴
+                const file = item.getAsFile();
+                await handleFilePaste(file);
+                processed = true;
+                break;
             }
         }
 
@@ -206,6 +212,35 @@
             }
         } catch (error) {
             console.error('图片粘贴错误:', error);
+            showNotification('添加失败', 'error');
+        } finally {
+            hidePasteProcessing();
+        }
+    }
+
+    // 处理文件粘贴
+    async function handleFilePaste(file) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'File');
+
+            const response = await fetch('/api/paste/file', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('文件已添加到剪贴板历史', 'success');
+                // 刷新历史记录，显示最新内容
+                currentOffset = 0;
+                loadHistory();
+            } else {
+                showNotification('添加失败: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('文件粘贴错误:', error);
             showNotification('添加失败', 'error');
         } finally {
             hidePasteProcessing();
