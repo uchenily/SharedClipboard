@@ -5,19 +5,39 @@
     <h2 class="text-xl font-bold mb-4">剪贴板历史记录</h2>
     
     <!-- 粘贴和拖拽提示 -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-        <div class="flex items-center">
-            <i class="fa fa-info-circle text-blue-500 mr-2"></i>
-            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 粘贴文本、图片或文件 | 也可以直接拖拽文件到此处 | 图片支持直接复制到剪贴板 | <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+点击图片</kbd> 快速复制</span>
+    <div class="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <i class="fa fa-info text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-700">
+                        <kbd class="px-2 py-1 bg-white rounded text-xs font-mono shadow-sm border border-gray-200">Ctrl+V</kbd>
+                        <span class="mx-2 text-gray-400">|</span>
+                        粘贴内容
+                        <span class="mx-2 text-gray-400">|</span>
+                        <kbd class="px-2 py-1 bg-white rounded text-xs font-mono shadow-sm border border-gray-200">拖拽</kbd>
+                        <span class="mx-2 text-gray-400">|</span>
+                        上传文件
+                        <span class="mx-2 text-gray-400">|</span>
+                        <kbd class="px-2 py-1 bg-white rounded text-xs font-mono shadow-sm border border-gray-200">Ctrl+点击图片</kbd>
+                        <span class="mx-2 text-gray-400">|</span>
+                        快速复制
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 拖拽区域 -->
-    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center transition-colors duration-200 hover:border-blue-400 cursor-pointer">
-        <i class="fa fa-cloud-upload text-4xl text-gray-400 mb-4"></i>
-        <p class="text-gray-600 text-lg mb-2">拖拽文件到此处上传</p>
-        <p class="text-gray-500 text-sm mb-4">支持文本、图片和任意文件类型</p>
-        <button class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 mb-6 text-center transition-all duration-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer group">
+        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <i class="fa fa-cloud-upload text-white text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">拖拽文件到此处上传</h3>
+        <p class="text-gray-500 text-sm mb-6">支持文本、图片和任意文件类型 • 支持批量上传</p>
+        <button class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg">
             <i class="fa fa-folder-open mr-2"></i>选择文件
         </button>
     </div>
@@ -29,10 +49,22 @@
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
         <!-- 筛选按钮组 -->
         <div class="flex flex-wrap gap-2">
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="all">全部类型</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="Text">文本</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="Image">图片</button>
-            <button class="filter-toggle px-3 py-1 rounded-full text-sm hover:bg-gray-100" data-type="File">文件</button>
+            <button class="filter-toggle flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-50" data-type="all">
+                <i class="fa fa-th-large"></i>
+                <span>全部类型</span>
+            </button>
+            <button class="filter-toggle flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-50" data-type="Text">
+                <i class="fa fa-file-text-o text-blue-500"></i>
+                <span>文本</span>
+            </button>
+            <button class="filter-toggle flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-50" data-type="Image">
+                <i class="fa fa-picture-o text-green-500"></i>
+                <span>图片</span>
+            </button>
+            <button class="filter-toggle flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-50" data-type="File">
+                <i class="fa fa-file-o text-purple-500"></i>
+                <span>文件</span>
+            </button>
         </div>
     </div>
 
@@ -627,6 +659,30 @@
             });
     }
 
+    // 获取类型对应的图标
+    function getTypeIcon(type) {
+        const iconMap = {
+            'Text': {
+                icon: 'fa-file-text-o',
+                color: 'text-blue-500',
+                bgColor: 'bg-blue-100'
+            },
+            'Image': {
+                icon: 'fa-picture-o',
+                color: 'text-green-500',
+                bgColor: 'bg-green-100'
+            },
+            'File': {
+                icon: 'fa-file-o',
+                color: 'text-purple-500',
+                bgColor: 'bg-purple-100'
+            }
+        };
+        
+        const typeInfo = iconMap[type] || iconMap['File'];
+        return typeInfo;
+    }
+
     // 渲染记录列表
     function renderRecords(records) {
         const container = document.getElementById('history-list');
@@ -641,6 +697,9 @@
 
         let html = '';
         records.forEach(record => {
+            // 获取类型图标信息
+            const typeIcon = getTypeIcon(record.type);
+            
             // 根据类型生成不同的内容预览
             let previewContent = '';
             let actionButton = '';
@@ -657,20 +716,33 @@
 
                 // 构建预览内容（带展开/折叠功能）
                 previewContent = `
-                    <div class="text-gray-700 text-wrap">
-                        <span class="${isLongText ? 'preview-text' : ''}">${escapeHtml(preview)}</span>
-                        ${isLongText ? `<span class="full-text hidden">${escapeHtml(content)}</span>` : ''}
+                    <div class="text-content-container">
+                        <div class="text-preview bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl p-4 border border-gray-100 relative overflow-hidden">
+                            <div class="absolute top-2 right-2 text-xs text-gray-400 bg-white/80 px-2 py-1 rounded-full">
+                                ${content.length} 字符
+                            </div>
+                            <div class="${isLongText ? 'preview-text' : ''} text-gray-700 leading-relaxed">
+                                ${formatTextDisplay(isLongText ? preview : content)}
+                            </div>
+                            ${isLongText ? `
+                                <div class="full-text hidden text-gray-700 leading-relaxed">
+                                    ${formatTextDisplay(content)}
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${isLongText ? `
+                            <button class="toggle-text flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700 mt-3 font-medium transition-colors duration-200 group">
+                                <i class="fa fa-chevron-down transition-transform duration-200"></i>
+                                <span class="toggle-text-label">展开完整内容</span>
+                            </button>
+                        ` : ''}
                     </div>
-                    ${isLongText ? `
-                        <button class="toggle-text text-sm text-blue-500 hover:text-blue-700 mt-1">
-                            展开
-                        </button>
-                    ` : ''}
                 `;
 
                 actionButton = `
-                    <button class="copy-btn text-blue-500 hover:text-blue-700" data-clipboard="${escapeHtml(content)}">
-                        <i class="fa fa-copy"></i> 复制
+                    <button class="copy-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition-all duration-200" data-clipboard="${escapeHtml(content)}">
+                        <i class="fa fa-copy"></i>
+                        <span class="ml-1 text-xs">复制</span>
                     </button>
                 `;
             }
@@ -679,14 +751,20 @@
                 const fileName = record.file_name || '未知图片';
 
                 previewContent = `
-                    <div class="mt-1">
-                        <img src="/api/download?checksum=${record.checksum}" 
-                             alt="${escapeHtml(fileName)}" 
-                             class="max-h-32 max-w-full rounded border border-gray-200 cursor-pointer preview-img"
-                             data-filename="${escapeHtml(fileName)}"
-                             data-src="/api/download?checksum=${record.checksum}"
-                             data-checksum="${record.checksum}">
-                        <p class="text-sm text-gray-600 mt-1">${escapeHtml(fileName)}</p>
+                    <div class="mt-2">
+                        <div class="relative inline-block group">
+                            <img src="/api/download?checksum=${record.checksum}" 
+                                 alt="${escapeHtml(fileName)}" 
+                                 class="max-h-36 max-w-full rounded-lg border border-gray-200 cursor-pointer preview-img hover:border-blue-400 hover:shadow-md transition-all duration-200"
+                                 data-filename="${escapeHtml(fileName)}"
+                                 data-src="/api/download?checksum=${record.checksum}"
+                                 data-checksum="${record.checksum}">
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all duration-200 pointer-events-none"></div>
+                            <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <i class="fa fa-search-plus"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2 font-medium">${escapeHtml(fileName)}</p>
                     </div>
                 `;
 
@@ -711,10 +789,15 @@
                 }
 
                 previewContent = `
-                    <div class="text-gray-700 truncate">
-                        <i class="fa fa-file-o mr-1"></i> ${escapeHtml(fileName)}
+                    <div class="flex items-center space-x-2 bg-gray-50 rounded-lg p-3 border border-gray-100">
+                        <div class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                            <i class="fa fa-file text-gray-500"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-gray-700 truncate font-medium">${escapeHtml(fileName)}</p>
+                            ${extraInfo ? `<div class="text-xs text-gray-500 mt-1">${extraInfo}</div>` : ''}
+                        </div>
                     </div>
-                    ${extraInfo}
                 `;
 
                 actionButton = `
@@ -740,23 +823,38 @@
 
             // 构建记录卡片
             html += `
-            <div class="bg-white rounded-lg shadow-sm p-3 mb-2 hover:shadow-md transition-custom" data-type="${record.type}">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-gray-900">${record.type}</span>
-                            <span class="ml-2 text-xs text-gray-500">${record.timestamp}</span>
-                        </div>
-                        ${previewContent}
-                        <div class="mt-1">
-                            ${sourceInfo}
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-3 hover:shadow-md transition-all duration-200 hover:shadow-lg" data-type="${record.type}">
+                <div class="flex items-start space-x-3">
+                    <!-- 类型图标 -->
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 ${typeIcon.bgColor} rounded-full flex items-center justify-center">
+                            <i class="fa ${typeIcon.icon} ${typeIcon.color}"></i>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <button class="favorite-btn ${favoriteClass}" data-uuid="${record.uuid}" data-action="${favoriteAction}">
-                            <i class="fa fa-star"></i>
-                        </button>
-                        ${actionButton}
+                    
+                    <!-- 主要内容区域 -->
+                    <div class="flex-1 min-w-0">
+                        <!-- 头部信息 -->
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-medium text-gray-900">${record.type}</span>
+                                <span class="text-xs text-gray-400">${record.timestamp}</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button class="favorite-btn ${favoriteClass} hover:scale-110 transition-transform" data-uuid="${record.uuid}" data-action="${favoriteAction}">
+                                    <i class="fa fa-star"></i>
+                                </button>
+                                ${actionButton}
+                            </div>
+                        </div>
+                        
+                        <!-- 内容预览 -->
+                        ${previewContent}
+                        
+                        <!-- 来源和标签信息 -->
+                        <div class="mt-2">
+                            ${sourceInfo}
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -788,19 +886,42 @@
         // 绑定文本展开/折叠事件（在渲染后立即绑定）
         document.querySelectorAll('.toggle-text').forEach(button => {
             button.addEventListener('click', function () {
-                const previewText = this.parentElement.querySelector('.preview-text');
-                const fullText = this.parentElement.querySelector('.full-text');
+                const container = this.closest('.text-content-container');
+                const previewText = container.querySelector('.preview-text');
+                const fullText = container.querySelector('.full-text');
+                const icon = this.querySelector('i');
+                const label = this.querySelector('.toggle-text-label');
 
                 if (fullText.classList.contains('hidden')) {
-                    // 切换到显示完整文本
+                    // 展开：显示完整文本
                     previewText.classList.add('hidden');
                     fullText.classList.remove('hidden');
-                    this.textContent = '收起';
+                    
+                    // 更新按钮样式
+                    icon.style.transform = 'rotate(180deg)';
+                    label.textContent = '收起内容';
+                    this.classList.add('text-gray-600');
+                    this.classList.remove('text-blue-600');
+                    
+                    // 添加展开动画
+                    fullText.style.maxHeight = '0px';
+                    fullText.style.opacity = '0';
+                    fullText.style.transition = 'all 0.3s ease-out';
+                    
+                    setTimeout(() => {
+                        fullText.style.maxHeight = '1000px';
+                        fullText.style.opacity = '1';
+                    }, 10);
                 } else {
-                    // 切换到显示预览文本
+                    // 收起：显示预览文本
                     previewText.classList.remove('hidden');
                     fullText.classList.add('hidden');
-                    this.textContent = '展开';
+                    
+                    // 更新按钮样式
+                    icon.style.transform = 'rotate(0deg)';
+                    label.textContent = '展开完整内容';
+                    this.classList.remove('text-gray-600');
+                    this.classList.add('text-blue-600');
                 }
             });
         });
@@ -886,6 +1007,46 @@
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 增强的文本格式化函数
+    function formatTextDisplay(text) {
+        if (!text) return '';
+        
+        // 先转义HTML
+        let formatted = escapeHtml(text);
+        
+        // 检测并格式化URL
+        formatted = formatted.replace(
+            /(https?:\/\/[^\s]+)/g, 
+            '<a href="$1" target="_blank" class="text-blue-600 hover:text-blue-800 underline" rel="noopener noreferrer">$1</a>'
+        );
+        
+        // 检测邮箱地址
+        formatted = formatted.replace(
+            /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+            '<a href="mailto:$1" class="text-blue-600 hover:text-blue-800 underline">$1</a>'
+        );
+        
+        // 检测文件路径（Windows和Unix）
+        formatted = formatted.replace(
+            /([A-Za-z]:\\[^\\:*?"<>|]+|\/[^\\:*?"<>|\s]+)/g,
+            '<span class="text-gray-600 bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">$1</span>'
+        );
+        
+        // 检测代码块（```code```）
+        formatted = formatted.replace(
+            /```([\s\S]*?)```/g,
+            '<pre class="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>'
+        );
+        
+        // 检测行内代码（`code`）
+        formatted = formatted.replace(
+            /`([^`]+)`/g,
+            '<code class="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>'
+        );
+        
+        return formatted;
     }
 
     // 防止XSS攻击的HTML转义函数
