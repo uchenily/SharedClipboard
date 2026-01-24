@@ -1,6 +1,8 @@
-# SyncClipboardWebHistory
+# SharedClipboard
 
-[SyncClipboard](https://github.com/Jeric-X/SyncClipboard) 的在线剪贴板历史记录管理系统
+原项目 [SyncClipboardWebHistory](https://github.com/youli42/SyncClipboardWebHistory.git) 在线剪贴板
+
+扩充了部分功能, 主要添加web快捷操作
 
 ## 🌟 主要功能
 
@@ -220,7 +222,6 @@ python3 start.py
 ```
 .
 ├── backup/                    # 备份文件位置
-├── clipboard_history_OneFile.py  # 单文件版本，运行后会生成html页面
 ├── config.py                  # 配置文件   
 ├── database.py                # 数据库相关函数
 ├── db/
