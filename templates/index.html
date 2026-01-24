@@ -3,6 +3,14 @@
 {% block content %}
 <div class="mb-6">
     <h2 class="text-xl font-bold mb-4">剪贴板历史记录</h2>
+    
+    <!-- 粘贴提示 -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+        <div class="flex items-center">
+            <i class="fa fa-info-circle text-blue-500 mr-2"></i>
+            <span class="text-sm text-blue-700">使用 <kbd class="px-2 py-1 bg-blue-100 rounded text-xs">Ctrl+V</kbd> 直接粘贴文本或图片到历史记录</span>
+        </div>
+    </div>
 
     <!-- 筛选器 -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
@@ -65,6 +73,7 @@
         loadHistory();
         initPaginationEvents();
         initModalEvents();
+        initPasteEvents();
     });
 
     // 初始化模态框事件
@@ -85,6 +94,137 @@
                 modal.classList.remove('flex');
             }
         });
+    }
+
+    // 初始化粘贴事件
+    function initPasteEvents() {
+        document.addEventListener('paste', handlePaste);
+    }
+
+    // 处理粘贴事件
+    async function handlePaste(e) {
+        e.preventDefault();
+        
+        const items = e.clipboardData.items;
+        let processed = false;
+
+        // 显示处理中提示
+        showPasteProcessing();
+
+        for (let item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                // 处理图片粘贴
+                const blob = item.getAsFile();
+                await handleImagePaste(blob);
+                processed = true;
+                break;
+            } else if (item.type === 'text/plain') {
+                // 处理文本粘贴
+                const text = e.clipboardData.getData('text/plain');
+                await handleTextPaste(text);
+                processed = true;
+                break;
+            }
+        }
+
+        if (!processed) {
+            hidePasteProcessing();
+            showNotification('不支持的粘贴内容类型', 'error');
+        }
+    }
+
+    // 处理文本粘贴
+    async function handleTextPaste(text) {
+        try {
+            const response = await fetch('/api/paste/text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: text,
+                    type: 'Text'
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('文本已添加到剪贴板历史', 'success');
+                // 刷新历史记录，显示最新内容
+                currentOffset = 0;
+                loadHistory();
+            } else {
+                showNotification('添加失败: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('文本粘贴错误:', error);
+            showNotification('添加失败', 'error');
+        } finally {
+            hidePasteProcessing();
+        }
+    }
+
+    // 处理图片粘贴
+    async function handleImagePaste(blob) {
+        try {
+            const formData = new FormData();
+            formData.append('file', blob);
+            formData.append('type', 'Image');
+
+            const response = await fetch('/api/paste/image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('图片已添加到剪贴板历史', 'success');
+                // 刷新历史记录，显示最新内容
+                currentOffset = 0;
+                loadHistory();
+            } else {
+                showNotification('添加失败: ' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('图片粘贴错误:', error);
+            showNotification('添加失败', 'error');
+        } finally {
+            hidePasteProcessing();
+        }
+    }
+
+    // 显示粘贴处理中状态
+    function showPasteProcessing() {
+        const processingDiv = document.createElement('div');
+        processingDiv.id = 'paste-processing';
+        processingDiv.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        processingDiv.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>正在处理粘贴内容...';
+        document.body.appendChild(processingDiv);
+    }
+
+    // 隐藏粘贴处理中状态
+    function hidePasteProcessing() {
+        const processingDiv = document.getElementById('paste-processing');
+        if (processingDiv) {
+            processingDiv.remove();
+        }
+    }
+
+    // 显示通知
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-500 text-white' :
+            type === 'error' ? 'bg-red-500 text-white' :
+            'bg-gray-500 text-white'
+        }`;
+        notification.innerHTML = message;
+        document.body.appendChild(notification);
+
+        // 3秒后自动移除
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 
     // 加载历史记录
