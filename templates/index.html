@@ -98,11 +98,11 @@
         <div class="flex justify-between items-center">
             <h3 id="modal-title" class="font-medium truncate max-w-md"></h3>
             <div class="flex items-center space-x-4">
-                <button id="modal-copy-image" class="text-white hover:text-blue-300 transition-colors">
-                    <i class="fa fa-copy mr-2"></i>复制
+                <button id="modal-copy-image" class="text-white hover:text-blue-300 transition-colors px-3 py-2 rounded-lg hover:bg-white/10">
+                    <i class="fa fa-clone"></i>
                 </button>
-                <button id="close-modal" class="text-white hover:text-gray-300 transition-colors">
-                    <i class="fa fa-times text-xl"></i>
+                <button id="close-modal" class="text-white hover:text-gray-300 transition-colors px-3 py-2 rounded-lg hover:bg-white/10">
+                    <i class="fa fa-times text-lg"></i>
                 </button>
             </div>
         </div>
@@ -607,18 +607,19 @@
                 console.log('复制到剪贴板成功');
                 
                 // 如果有按钮元素，显示成功状态
-                if (buttonElement && buttonElement.innerHTML) {
-                    console.log('更新按钮状态');
-                    const originalText = buttonElement.innerHTML;
-                    buttonElement.innerHTML = '<i class="fa fa-check"></i> 已复制';
-                    buttonElement.classList.remove('text-blue-500');
-                    buttonElement.classList.add('text-green-500');
+                if (buttonElement) {
+                    const icon = buttonElement.querySelector('i');
+                    buttonElement.classList.remove('text-green-500', 'hover:text-green-700', 'hover:bg-green-50');
+                    buttonElement.classList.add('text-green-600', 'bg-green-50');
+                    icon.classList.remove('fa-clone');
+                    icon.classList.add('fa-check');
                     
                     setTimeout(() => {
-                        if (buttonElement) {
-                            buttonElement.innerHTML = originalText;
-                            buttonElement.classList.remove('text-green-500');
-                            buttonElement.classList.add('text-blue-500');
+                        if (buttonElement && icon) {
+                            buttonElement.classList.remove('text-green-600', 'bg-green-50');
+                            buttonElement.classList.add('text-green-500', 'hover:text-green-700', 'hover:bg-green-50');
+                            icon.classList.remove('fa-check');
+                            icon.classList.add('fa-clone');
                         }
                     }, 2000);
                 }
@@ -740,9 +741,8 @@
                 `;
 
                 actionButton = `
-                    <button class="copy-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded transition-all duration-200" data-clipboard="${escapeHtml(content)}">
-                        <i class="fa fa-copy"></i>
-                        <span class="ml-1 text-xs">复制</span>
+                    <button class="copy-btn text-blue-500 hover:text-blue-700 hover:bg-blue-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-clipboard="${escapeHtml(content)}" title="复制文本">
+                        <i class="fa fa-clipboard"></i>
                     </button>
                 `;
             }
@@ -769,11 +769,11 @@
                 `;
 
                 actionButton = `
-                    <button class="copy-image-btn text-blue-500 hover:text-blue-700" data-checksum="${record.checksum}">
-                        <i class="fa fa-copy"></i> 复制图片
+                    <button class="copy-image-btn text-green-500 hover:text-green-700 hover:bg-green-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" data-checksum="${record.checksum}" title="复制图片">
+                        <i class="fa fa-clone"></i>
                     </button>
-                    <a href="/api/download?checksum=${record.checksum}" class="text-blue-500 hover:text-blue-700 ml-2" download>
-                        <i class="fa fa-download"></i> 下载
+                    <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center ml-2" download title="下载图片">
+                        <i class="fa fa-download"></i>
                     </a>
                 `;
             }
@@ -801,8 +801,8 @@
                 `;
 
                 actionButton = `
-                    <a href="/api/download?checksum=${record.checksum}" class="text-blue-500 hover:text-blue-700" download>
-                        <i class="fa fa-download"></i> 下载
+                    <a href="/api/download?checksum=${record.checksum}" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 w-8 h-8 rounded-lg transition-all duration-200 flex items-center justify-center" download title="下载文件">
+                        <i class="fa fa-download"></i>
                     </a>
                 `;
             }
@@ -817,9 +817,7 @@
                 sourceInfo += `<span class="text-sm text-gray-500">标签: ${escapeHtml(record.tag)}</span>`;
             }
 
-            // 收藏图标
-            const favoriteClass = record.is_favorite ? 'text-yellow-500' : 'text-gray-300';
-            const favoriteAction = record.is_favorite ? 'unfavorite' : 'favorite';
+
 
             // 构建记录卡片
             html += `
@@ -841,9 +839,6 @@
                                 <span class="text-xs text-gray-400">${record.timestamp}</span>
                             </div>
                             <div class="flex items-center space-x-1">
-                                <button class="favorite-btn ${favoriteClass} hover:scale-110 transition-transform" data-uuid="${record.uuid}" data-action="${favoriteAction}">
-                                    <i class="fa fa-star"></i>
-                                </button>
                                 ${actionButton}
                             </div>
                         </div>
@@ -865,17 +860,20 @@
         document.querySelectorAll('.copy-btn').forEach(button => {
             button.addEventListener('click', function () {
                 const text = this.getAttribute('data-clipboard');
+                const icon = this.querySelector('i');
+                
                 navigator.clipboard.writeText(text).then(() => {
-                    // 显示复制成功提示
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fa fa-check"></i> 已复制';
-                    this.classList.remove('text-blue-500');
-                    this.classList.add('text-green-500');
+                    // 显示复制成功状态
+                    this.classList.remove('text-blue-500', 'hover:text-blue-700', 'hover:bg-blue-50');
+                    this.classList.add('text-green-500', 'bg-green-50');
+                    icon.classList.remove('fa-clipboard');
+                    icon.classList.add('fa-check');
 
                     setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.classList.remove('text-green-500');
-                        this.classList.add('text-blue-500');
+                        this.classList.remove('text-green-500', 'bg-green-50');
+                        this.classList.add('text-blue-500', 'hover:text-blue-700', 'hover:bg-blue-50');
+                        icon.classList.remove('fa-check');
+                        icon.classList.add('fa-clipboard');
                     }, 2000);
                 }).catch(err => {
                     console.error('复制失败:', err);
@@ -944,12 +942,10 @@
                     
                     // 查找复制按钮，使用更安全的选择器
                     const copyBtn = this.closest('.bg-white').querySelector('.copy-image-btn');
-                    console.log('找到复制按钮:', copyBtn);
                     
                     if (copyBtn) {
                         copyImageToClipboard(checksum, copyBtn);
                     } else {
-                        console.log('未找到复制按钮，使用直接复制');
                         // 如果找不到按钮，直接复制但不显示按钮状态
                         copyImageToClipboard(checksum, null);
                     }
@@ -973,29 +969,25 @@
             });
         });
 
-        // 绑定收藏按钮事件
-        document.querySelectorAll('.favorite-btn').forEach(button => {
-            button.addEventListener('click', function () {
-                const uuid = this.getAttribute('data-uuid');
-                const isFavorite = this.classList.contains('text-yellow-500');
 
-                // 这里应该调用后端API来更新收藏状态
-                // 为了演示，先做前端状态切换
-                if (isFavorite) {
-                    this.classList.remove('text-yellow-500');
-                    this.classList.add('text-gray-300');
-                } else {
-                    this.classList.remove('text-gray-300');
-                    this.classList.add('text-yellow-500');
-                }
-            });
-        });
 
         // 绑定复制图片按钮事件
         document.querySelectorAll('.copy-image-btn').forEach(button => {
             button.addEventListener('click', async function () {
+                const icon = this.querySelector('i');
+                
+                // 显示处理中状态
+                this.classList.add('opacity-50', 'cursor-not-allowed');
+                this.disabled = true;
+                
                 const checksum = this.getAttribute('data-checksum');
                 await copyImageToClipboard(checksum, this);
+                
+                // 恢复按钮状态
+                setTimeout(() => {
+                    this.classList.remove('opacity-50', 'cursor-not-allowed');
+                    this.disabled = false;
+                }, 2000);
             });
         });
     }
