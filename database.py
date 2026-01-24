@@ -52,6 +52,10 @@ class ClipboardHistory(BaseTable, table=True):
         description="文件内容的MD5校验和",
         index=True  # 创建索引加速查询
     )
+    original_filename: Optional[str] = Field(
+        default=None,
+        description="原始文件名（仅用于File和Image类型）"
+    )
     
     class Config:
         # 为时间戳字段创建索引，优化按时间筛选的性能
@@ -267,31 +271,32 @@ class ServerGet:
             # 转换为前端可用格式
             records = []
             for item in results:
-                # 解析文件名（从原始JSON）
-                file_name = None
-                try:
-                    raw_data = json.loads(item.raw_content)
-                    file_name = raw_data.get("File", None)
-                except json.JSONDecodeError:
-                    pass
-                
-                # 检查是否为收藏
-                is_favorite = session.exec(
-                    select(Favorite).where(Favorite.history_uuid == item.uuid)
-                ).first() is not None
-                
-                records.append({ # for 循环中添加代码
-                    'id': item.id,
-                    'uuid': item.uuid,
-                    'type': item.type,
-                    'timestamp': item.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                    'source': item.from_equipment,
-                    'tag': item.tag,  # 添加标签信息
-                    'is_favorite': is_favorite,
-                    'content': item.clipboard if item.type == 'Text' else None,
-                    'file_name': file_name,
-                    'checksum': item.checksum
-                })
+                    # 优先使用 original_filename，如果没有则从原始JSON解析（兼容旧数据）
+                    file_name = item.original_filename
+                    if not file_name:
+                        try:
+                            raw_data = json.loads(item.raw_content)
+                            file_name = raw_data.get("File", None)
+                        except json.JSONDecodeError:
+                            pass
+                    
+                    # 检查是否为收藏
+                    is_favorite = session.exec(
+                        select(Favorite).where(Favorite.history_uuid == item.uuid)
+                    ).first() is not None
+                    
+                    records.append({ # for 循环中添加代码
+                        'id': item.id,
+                        'uuid': item.uuid,
+                        'type': item.type,
+                        'timestamp': item.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                        'source': item.from_equipment,
+                        'tag': item.tag,  # 添加标签信息
+                        'is_favorite': is_favorite,
+                        'content': item.clipboard if item.type == 'Text' else None,
+                        'file_name': file_name,
+                        'checksum': item.checksum
+                    })
             
             return {
                 'records': records,

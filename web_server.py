@@ -1,5 +1,6 @@
 import eventlet
 # eventlet.monkey_patch()
+import json
 from flask import Flask, render_template, request, jsonify, send_from_directory, g, send_file
 from flask_socketio import SocketIO
 from config import Config
@@ -139,7 +140,7 @@ def paste_image():
         }
         
         # 添加到数据库
-        from database import add_history_item_from_json, init_db, BackupFile
+        from database import add_history_item_from_json, init_db, BackupFile, ClipboardHistory
         from sqlmodel import Session, select
         engine = init_db()
         
@@ -155,7 +156,20 @@ def paste_image():
                 session.add(backup)
                 session.commit()
         
-        new_id = add_history_item_from_json(json_data, engine)
+        # 直接创建数据库记录，以便设置原始文件名
+        with Session(engine) as session:
+            history_item = ClipboardHistory(
+                raw_content=json.dumps(json_data),
+                type="Image",
+                clipboard=checksum,  # 对于图片，clipboard字段存储checksum
+                from_equipment="Web",
+                tag="手动粘贴",
+                checksum=checksum,
+                original_filename=file.filename  # 存储原始文件名
+            )
+            session.add(history_item)
+            session.commit()
+            new_id = history_item.id
         
         if new_id:
             return jsonify({'success': True, 'id': new_id})
@@ -209,7 +223,7 @@ def paste_file():
         }
         
         # 添加到数据库
-        from database import add_history_item_from_json, init_db, BackupFile
+        from database import add_history_item_from_json, init_db, BackupFile, ClipboardHistory
         from sqlmodel import Session, select
         engine = init_db()
         
@@ -225,7 +239,20 @@ def paste_file():
                 session.add(backup)
                 session.commit()
         
-        new_id = add_history_item_from_json(json_data, engine)
+        # 直接创建数据库记录，以便设置原始文件名
+        with Session(engine) as session:
+            history_item = ClipboardHistory(
+                raw_content=json.dumps(json_data),
+                type="File",
+                clipboard=file.filename,  # 剪贴板内容存储原始文件名
+                from_equipment="Web",
+                tag="手动粘贴",
+                checksum=checksum,
+                original_filename=file.filename  # 存储原始文件名
+            )
+            session.add(history_item)
+            session.commit()
+            new_id = history_item.id
         
         if new_id:
             return jsonify({'success': True, 'id': new_id})
