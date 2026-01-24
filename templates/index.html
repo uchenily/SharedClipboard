@@ -128,6 +128,7 @@
         initPasteEvents();
         initDragAndDropEvents();
         initFilterEvents();
+        initSearchEvents();
     });
 
     // 初始化模态框事件
@@ -658,6 +659,121 @@
         }
     }
 
+    // 初始化搜索事件
+    function initSearchEvents() {
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('clear-search');
+        const searchInputMobile = document.getElementById('search-input-mobile');
+        const clearBtnMobile = document.getElementById('clear-search-mobile');
+        
+        let searchTimeout;
+        
+        // 搜索函数
+        function performSearch(query) {
+            clearTimeout(searchTimeout);
+            
+            if (query.trim()) {
+                // 显示清除按钮
+                if (clearBtn) clearBtn.classList.remove('hidden');
+                if (clearBtnMobile) clearBtnMobile.classList.remove('hidden');
+                
+                // 延迟搜索，避免频繁请求
+                searchTimeout = setTimeout(() => {
+                    searchRecords(query);
+                }, 300);
+            } else {
+                // 隐藏清除按钮
+                if (clearBtn) clearBtn.classList.add('hidden');
+                if (clearBtnMobile) clearBtnMobile.classList.add('hidden');
+                
+                // 清空搜索，显示所有记录
+                loadHistory();
+            }
+        }
+        
+        // 桌面端搜索事件
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                performSearch(e.target.value);
+                
+                // 同步移动端搜索框
+                if (searchInputMobile) {
+                    searchInputMobile.value = e.target.value;
+                }
+            });
+        }
+        
+        // 移动端搜索事件
+        if (searchInputMobile) {
+            searchInputMobile.addEventListener('input', (e) => {
+                performSearch(e.target.value);
+                
+                // 同步桌面端搜索框
+                if (searchInput) {
+                    searchInput.value = e.target.value;
+                }
+            });
+        }
+        
+        // 清除按钮事件
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                if (searchInputMobile) searchInputMobile.value = '';
+                clearBtn.classList.add('hidden');
+                if (clearBtnMobile) clearBtnMobile.classList.add('hidden');
+                loadHistory();
+            });
+        }
+        
+        if (clearBtnMobile) {
+            clearBtnMobile.addEventListener('click', () => {
+                searchInputMobile.value = '';
+                if (searchInput) searchInput.value = '';
+                clearBtnMobile.classList.add('hidden');
+                if (clearBtn) clearBtn.classList.add('hidden');
+                loadHistory();
+            });
+        }
+    }
+
+    // 搜索记录
+    async function searchRecords(query) {
+        const container = document.getElementById('history-list');
+        
+        // 显示加载中状态
+        container.innerHTML = `
+            <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+                <i class="fa fa-spinner fa-spin text-primary text-3xl mb-4"></i>
+                <p class="text-gray-500">搜索中...</p>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=0`);
+            const data = await response.json();
+            
+            if (data.success) {
+                totalRecords = data.data.total;
+                currentOffset = 0;
+                renderRecords(data.data.records);
+                updatePaginationUI();
+                
+                // 显示搜索结果信息
+                if (data.query && data.data.total > 0) {
+                    showNotification(`找到 ${data.data.total} 条相关记录`, 'success');
+                } else if (data.query && data.data.total === 0) {
+                    showNotification('未找到相关记录', 'info');
+                }
+            } else {
+                container.innerHTML = `<div class="text-center text-red-500">搜索失败: ${data.error}</div>`;
+            }
+        } catch (error) {
+            console.error('搜索错误:', error);
+            container.innerHTML = `<div class="text-center text-red-500">搜索失败</div>`;
+        }
+    }
+
     // 显示通知
     function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
@@ -1128,12 +1244,24 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // 增强的文本格式化函数
+    // 文本格式化函数（移除高亮功能）
     function formatTextDisplay(text) {
         if (!text) return '';
         
         // 先转义HTML
         let formatted = escapeHtml(text);
+        
+        // 检测并格式化代码块（```code```）
+        formatted = formatted.replace(
+            /```([\s\S]*?)```/g,
+            '<pre class="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>'
+        );
+        
+        // 检测行内代码（`code`）
+        formatted = formatted.replace(
+            /`([^`]+)`/g,
+            '<code class="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>'
+        );
         
         // 检测并格式化URL
         formatted = formatted.replace(
@@ -1151,18 +1279,6 @@
         formatted = formatted.replace(
             /([A-Za-z]:\\[^\\:*?"<>|]+|\/[^\\:*?"<>|\s]+)/g,
             '<span class="text-gray-600 bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">$1</span>'
-        );
-        
-        // 检测代码块（```code```）
-        formatted = formatted.replace(
-            /```([\s\S]*?)```/g,
-            '<pre class="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>'
-        );
-        
-        // 检测行内代码（`code`）
-        formatted = formatted.replace(
-            /`([^`]+)`/g,
-            '<code class="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>'
         );
         
         return formatted;

@@ -316,6 +316,77 @@ def delete_record(uuid):
         print(f"删除记录错误: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# 搜索API
+@app.route('/api/search', methods=['GET'])
+def search_records():
+    try:
+        query = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 30))
+        offset = int(request.args.get('offset', 0))
+        
+        # 限制参数范围
+        limit = max(1, min(limit, 100))
+        offset = max(0, offset)
+        
+        if not query:
+            # 如果没有搜索词，返回普通的历史记录
+            from database import ServerGet
+            history_db = ServerGet()
+            result = history_db.get_history_paginated(limit=limit, offset=offset)
+            return jsonify({'success': True, 'data': result, 'query': query})
+        
+        # 有搜索词，进行搜索
+        from database import ServerGet
+        history_db = ServerGet()
+        
+        # 使用现有的分页方法获取所有数据，然后在内存中搜索
+        result = history_db.get_history_paginated(limit=200, offset=0)  # 获取更多数据用于搜索
+        
+        filtered_records = []
+        query_lower = query.lower()
+        
+        for record in result['records']:
+            # 搜索文本内容
+            content = record.get('content') or ''
+            content_match = content.lower().find(query_lower) != -1
+            
+            # 搜索文件名
+            filename = record.get('file_name') or ''
+            filename_match = filename.lower().find(query_lower) != -1
+            
+            # 搜索时间戳
+            timestamp = record.get('timestamp') or ''
+            timestamp_match = timestamp.lower().find(query_lower) != -1
+            
+            # 搜索来源和标签
+            source = record.get('source') or ''
+            source_match = source.lower().find(query_lower) != -1
+            
+            tag = record.get('tag') or ''
+            tag_match = tag.lower().find(query_lower) != -1
+            
+            if content_match or filename_match or timestamp_match or source_match or tag_match:
+                filtered_records.append(record)
+        
+        # 应用分页
+        total_count = len(filtered_records)
+        paginated_records = filtered_records[offset:offset + limit]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'records': paginated_records,
+                'total': total_count,
+                'limit': limit,
+                'offset': offset
+            },
+            'query': query
+        })
+            
+    except Exception as e:
+        print(f"搜索错误: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 ##############################################################################
 
 @app.route('/history')
