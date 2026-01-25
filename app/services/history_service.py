@@ -6,13 +6,11 @@ import os
 import re
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from config import Config
-from database import add_history_item_from_json
+from config import config
+from app.db.database import add_history_item_from_json
 
-"""
-​主线程​​：通过watchdog监控文件变化（同步阻塞）
-​​子线程​​：专门处理通知队列（异步非阻塞）
-"""
+# 主线程：通过watchdog监控文件变化（同步阻塞）
+# 子线程：专门处理通知队列（异步非阻塞）
 
 SOCKETIO_SERVER = 'http://localhost:5000'
 
@@ -24,7 +22,7 @@ class JSONChangeHandler(FileSystemEventHandler):
         self.notification_queue = []  # 通知队列
         self.notification_thread = None
         self.stop_notification = threading.Event()
-        
+
         # 启动后台通知线程
         self.start_notification_thread()
 
@@ -32,7 +30,7 @@ class JSONChangeHandler(FileSystemEventHandler):
         """启动后台通知线程"""
         if self.notification_thread and self.notification_thread.is_alive():
             return
-            
+
         self.notification_thread = threading.Thread(
             target=self.process_notification_queue,
             daemon=True
@@ -55,12 +53,12 @@ class JSONChangeHandler(FileSystemEventHandler):
                 self.sio.connect(SOCKETIO_SERVER, wait_timeout=5) # 连接Socket.IO服务器
                 self.connected = True
                 print("Socket.IO 连接成功")
-            
+
             if self.connected:
                 self.sio.emit(event_type) # ⭐发送通知⭐
                 print(f"已发送 {event_type} 通知")
         except Exception as e:
-            
+
             # print(f"发送通知失败: {e}")
 
             self.connected = False
@@ -69,7 +67,7 @@ class JSONChangeHandler(FileSystemEventHandler):
 
     def get_current_content(self):
         try:
-            with open(Config.SYNC_CLIPBOARD_JSON_PATH, 'r', encoding='utf-8') as f:
+            with open(config.SYNC_CLIPBOARD_JSON_PATH, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             print(f"读取JSON文件错误: {e}")
@@ -84,10 +82,10 @@ class JSONChangeHandler(FileSystemEventHandler):
 
                     new_id = add_history_item_from_json(current_content)  # 将JSON内容添加到历史记录
                     print("已更新历史记录", new_id)
-                    
+
                     # 将通知加入队列（非阻塞）
                     self.notification_queue.append('history_update')
-                    
+
             except Exception as e:
                 print(f"处理JSON变更错误: {e}")
 
@@ -129,18 +127,18 @@ def parse_size(size_str):
     # 去除空白并尝试匹配
     cleaned_str = size_str.strip()
     match = re.match(r'^(\d+(?:\.\d+)?)\s*([BKMG]B?|B)$', cleaned_str, re.IGNORECASE)
-    
+
     if not match:
         raise ValueError(f"无效的大小格式: '{size_str}'。请使用类似 '1G', '500M' 的格式")
-    
+
     size = float(match.group(1))
     unit = match.group(2).upper()
-    
+
     # 标准化单位表示
     unit = unit.replace('B', '')  # 移除所有B字符
     if not unit:  # 如果是纯B，则保留为B
         unit = 'B'
-    
+
     # 单位转换为字节
     units = {
         'B': 1,
@@ -148,11 +146,11 @@ def parse_size(size_str):
         'M': 1024 ** 2,
         'G': 1024 ** 3
     }
-    
+
     if unit not in units:
         supported_units = ", ".join(units.keys())
         raise ValueError(f"不支持的单位: '{unit}'。请使用 {supported_units}")
-    
+
     return int(size * units[unit])
 
 def get_folder_size(folder_path):
@@ -168,7 +166,7 @@ def get_folder_size(folder_path):
 
 def get_oldest_file(folder_path):
     """获取文件夹中最旧的文件路径"""
-    files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
+    files = [os.path.join(folder_path, f) for f in os.listdir(folder_path)
              if os.path.isfile(os.path.join(folder_path, f))]
     if not files:
         return None
@@ -178,18 +176,18 @@ def get_oldest_file(folder_path):
 def delete_oldest_files(folder_path, max_size):
     """删除最旧的文件，直到文件夹大小低于max_size"""
     current_size = get_folder_size(folder_path)
-    
+
     if current_size <= max_size:
         return False  # 不需要删除文件
-    
+
     print(f"文件夹大小 {format_size(current_size)} 超过阈值 {format_size(max_size)}，开始清理...")
-    
+
     while current_size > max_size:
         oldest_file = get_oldest_file(folder_path)
         if not oldest_file:
             print("文件夹已空，但仍超过大小限制")
             break
-            
+
         file_size = os.path.getsize(oldest_file)
         try:
             os.remove(oldest_file)
@@ -198,7 +196,7 @@ def delete_oldest_files(folder_path, max_size):
         except Exception as e:
             print(f"删除文件 {oldest_file} 失败: {e}")
             break
-    
+
     return True
 
 def format_size(size_bytes):
@@ -206,11 +204,11 @@ def format_size(size_bytes):
     units = ['B', 'KB', 'MB', 'GB']
     unit_index = 0
     size = size_bytes
-    
+
     while size >= 1024 and unit_index < len(units) - 1:
         size /= 1024
         unit_index += 1
-    
+
     return f"{size:.2f} {units[unit_index]}"
 
 def monitor_backup_folder(folder_path, max_size_str, check_interval=60):
@@ -220,17 +218,17 @@ def monitor_backup_folder(folder_path, max_size_str, check_interval=60):
     if not os.path.exists(folder_path):
         print(f"错误: 文件夹 {folder_path} 不存在")
         return
-        
+
     try:
         max_size = parse_size(max_size_str)
     except ValueError as e:
         print(f"配置错误: {e}")
         return
-        
+
     print(f"开始监控文件夹: {folder_path}")
     print(f"最大允许大小: {max_size_str} ({format_size(max_size)})")
     print(f"检查间隔: {check_interval} 秒")
-    
+
     try:
         while True:
             delete_oldest_files(folder_path, max_size)
@@ -244,13 +242,6 @@ if __name__ == "monitor folder":
     FOLDER_TO_MONITOR = "/tmp"  # 替换为要监控的文件夹路径
     MAX_FOLDER_SIZE = "1GB"  # 支持格式: "100MB", "2GB", "512KB", "1024B"
     CHECK_INTERVAL = 60  # 检查间隔（秒）
-    
+
     # 启动监控
     monitor_backup_folder(FOLDER_TO_MONITOR, MAX_FOLDER_SIZE, CHECK_INTERVAL)
-
-
-if __name__ == "__main__":
-    # main()
-    
-    # 文件夹大小限制
-    monitor_backup_folder(Config.FOLDER_TO_MONITOR, Config.MAX_FOLDER_SIZE, Config.CHECK_INTERVAL)

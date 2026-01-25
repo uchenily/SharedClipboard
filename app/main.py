@@ -1,0 +1,59 @@
+import threading
+import time
+import signal
+import sys
+from app.services import history_service
+from app.db import database
+from config import config
+from app import create_app, socketio
+
+# 全局退出标志
+exit_event = threading.Event()
+
+def start_monitor():
+    """启动剪贴板监控服务（支持优雅退出）"""
+    history_service.main()
+
+def start_web():
+    """启动 Web 服务"""
+    app = create_app()
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)  # 禁用重载器
+
+def start_monitor_backup_folder(): # 监控，避免文件夹过大
+    history_service.monitor_backup_folder(config.FOLDER_TO_MONITOR, config.MAX_FOLDER_SIZE, config.CHECK_INTERVAL)
+
+#########################
+
+def signal_handler(sig, frame):
+    """处理中断信号"""
+    print("\n接收到退出信号，正在粗暴的关闭服务...")
+    exit_event.set()  # 设置退出标志
+
+    # 强制退出
+    sys.exit(0)
+
+def main():
+    # 初始化数据库
+    db_engine = database.init_db()
+
+    # 注册信号处理器
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # 创建线程
+    monitor_thread = threading.Thread(target=start_monitor, name="MonitorThread", daemon=True)
+    web_thread = threading.Thread(target=start_web, name="WebThread", daemon=True)
+    monitor_backup_folder_thread = threading.Thread(target=start_monitor_backup_folder, name="BonitorBackupBolder", daemon=True)
+
+    # 启动线程
+    monitor_thread.start()
+    web_thread.start()
+    monitor_backup_folder_thread.start()
+    print("服务已启动，按 Ctrl+C 退出")
+
+    try:
+        # 主线程保持运行
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        signal_handler(signal.SIGINT, None)
