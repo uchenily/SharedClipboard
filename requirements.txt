@@ -7,9 +7,11 @@ Flask-Cors==3.0.10
 Pygments==2.19.2
 python-socketio==5.13.0 # 用于实时更新
 eventlet==0.40.2 # 用于支持 WebSocket
+Flask-SocketIO==5.6.0
 
 # 数据库
 # Peewee
 SQLAlchemy==2.0.42
 sqlmodel==0.0.24
 # sqlite3
+
