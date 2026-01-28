@@ -1309,52 +1309,8 @@
     function formatTextDisplay(text) {
         if (!text) return '';
 
-        // 先转义HTML
-        let formatted = escapeHtml(text);
-
-        // 检测并格式化代码块（```code```）
-        formatted = formatted.replace(
-            /```([\s\S]*?)```/g,
-            '<pre class="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>'
-        );
-
-        // 检测行内代码（`code`）
-        formatted = formatted.replace(
-            /`([^`]+)`/g,
-            '<code class="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>'
-        );
-
-        // 检测并格式化URL
-        formatted = formatted.replace(
-            /(https?:\/\/[^\s]+)/g,
-            (match) => {
-                const safeUrl = sanitizeAutoLink(match);
-                if (!safeUrl) {
-                    return match;
-                }
-                return `<a href="${safeUrl}" class="text-blue-600 hover:text-blue-800 underline" rel="noopener noreferrer">${safeUrl}</a>`;
-            }
-        );
-
-        // 检测邮箱地址
-        formatted = formatted.replace(
-            /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-            (match) => {
-                const safeEmail = sanitizeAutoLink(match);
-                if (!safeEmail) {
-                    return match;
-                }
-                return `<a href="mailto:${safeEmail}" class="text-blue-600 hover:text-blue-800 underline">${safeEmail}</a>`;
-            }
-        );
-
-        // 检测文件路径（Windows和Unix）
-        formatted = formatted.replace(
-            /([A-Za-z]:\\[^\\:*?"<>|]+|\/[^\\:*?"<>|\s]+)/g,
-            '<span class="text-gray-600 bg-gray-100 px-1 py-0.5 rounded font-mono text-xs">$1</span>'
-        );
-
-        return formatted;
+        // 仅转义HTML并保留原样展示，不进行任何自动替换
+        return `<span class="text-wrap">${escapeHtml(text)}</span>`;
     }
 
     // 防止XSS攻击的HTML转义函数
@@ -1368,21 +1324,6 @@
             .replace(/'/g, "&#039;");
     }
 
-    // 避免特殊字符污染链接属性，防止错误跳转
-    function sanitizeAutoLink(text) {
-        if (!text) return '';
-        const entityStops = ['&quot;', '&#039;', '&lt;', '&gt;'];
-        let cut = text.length;
-        entityStops.forEach(entity => {
-            const idx = text.indexOf(entity);
-            if (idx !== -1 && idx < cut) {
-                cut = idx;
-            }
-        });
-        let safe = text.slice(0, cut);
-        safe = safe.replace(/[)\],.!?;:]+$/g, '');
-        return safe;
-    }
 
     // 初始化分页事件
     function initPaginationEvents() {
