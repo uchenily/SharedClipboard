@@ -1327,13 +1327,25 @@
         // 检测并格式化URL
         formatted = formatted.replace(
             /(https?:\/\/[^\s]+)/g,
-            '<a href="$1" target="_blank" class="text-blue-600 hover:text-blue-800 underline" rel="noopener noreferrer">$1</a>'
+            (match) => {
+                const safeUrl = sanitizeAutoLink(match);
+                if (!safeUrl) {
+                    return match;
+                }
+                return `<a href="${safeUrl}" class="text-blue-600 hover:text-blue-800 underline" rel="noopener noreferrer">${safeUrl}</a>`;
+            }
         );
 
         // 检测邮箱地址
         formatted = formatted.replace(
             /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-            '<a href="mailto:$1" class="text-blue-600 hover:text-blue-800 underline">$1</a>'
+            (match) => {
+                const safeEmail = sanitizeAutoLink(match);
+                if (!safeEmail) {
+                    return match;
+                }
+                return `<a href="mailto:${safeEmail}" class="text-blue-600 hover:text-blue-800 underline">${safeEmail}</a>`;
+            }
         );
 
         // 检测文件路径（Windows和Unix）
@@ -1354,6 +1366,22 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    // 避免特殊字符污染链接属性，防止错误跳转
+    function sanitizeAutoLink(text) {
+        if (!text) return '';
+        const entityStops = ['&quot;', '&#039;', '&lt;', '&gt;'];
+        let cut = text.length;
+        entityStops.forEach(entity => {
+            const idx = text.indexOf(entity);
+            if (idx !== -1 && idx < cut) {
+                cut = idx;
+            }
+        });
+        let safe = text.slice(0, cut);
+        safe = safe.replace(/[)\],.!?;:]+$/g, '');
+        return safe;
     }
 
     // 初始化分页事件
