@@ -6,6 +6,7 @@ from sqlmodel import SQLModel, create_engine, Session, select, func, delete
 from typing import Optional
 from config import config
 from app.models.models import ClipboardHistory, BackupFile, Folder, Favorite
+from app.db.cache import cache
 
 def init_db(): # 初始化数据库
     # 确保数据库目录存在
@@ -141,6 +142,9 @@ def add_history_item_from_json(data: dict, engine=None):
         )
         session.add(history)
         session.commit()
+        cache.invalidate_history()
+        if checksum:
+            cache.invalidate_file_path(checksum)
         return history.id
 
 class ServerGet:
@@ -150,6 +154,9 @@ class ServerGet:
     # 主页列表专用查询（仅按时间排序，无筛选）
     def get_history_paginated(self, limit: int = 30, offset: int = 0) -> dict:
         """仅按时间倒序返回指定偏移量和数量的记录，包含总条数"""
+        cached = cache.get_history_page(limit, offset)
+        if cached is not None:
+            return cached
         with Session(self.engine) as session:
             # 基础查询：按时间倒序（最新在前）
             base_query = select(ClipboardHistory).order_by(ClipboardHistory.timestamp.desc())
@@ -190,25 +197,35 @@ class ServerGet:
                         'checksum': item.checksum
                     })
 
-            return {
+            payload = {
                 'records': records,
                 'total': total_count,
                 'limit': limit,
                 'offset': offset
             }
+            cache.set_history_page(limit, offset, payload)
+            return payload
 
 
     # 下载接口，根据checksum获取文件路径
     def get_file_path_by_checksum(self, checksum: str) -> Optional[str]:
         """根据文件校验和获取文件路径"""
+        hit, cached_path = cache.get_file_path(checksum)
+        if hit:
+            return cached_path
         with Session(self.engine) as session:
             backup = session.exec(select(BackupFile).where(BackupFile.checksum == checksum)).first()
             if backup and os.path.exists(backup.filepath):
+                cache.set_file_path(checksum, backup.filepath)
                 return backup.filepath
+            cache.set_file_path(checksum, None)
             return None
 
     # 根据 ID 获取历史记录
     def get_history_by_id(self, history_id: int):
+        cached = cache.get_history_by_id(history_id)
+        if cached is not None:
+            return cached
         with Session(self.engine) as session: # 通过 Session 类创建一个数据库会话（session），self.engine 是数据库引擎（已在类中初始化），用于建立与数据库的连接。with 语句确保会话使用完毕后自动关闭，释放资源。
             # 使用 SQLModel 的 select 方法构建查询语句，指定查询 ClipboardHistory 模型（对应数据库表），并通过 where 条件筛选出 id 等于 history_id 的记录。
             statement = select(ClipboardHistory).where(ClipboardHistory.id == history_id)
@@ -216,7 +233,7 @@ class ServerGet:
 
             if result:
                 # 将结果转换为字典格式
-                return {
+                payload = {
                     'id': result.id,
                     'uuid': result.uuid,
                     'type': result.type,
@@ -227,6 +244,8 @@ class ServerGet:
                     'checksum': result.checksum,
                     'raw_content': result.raw_content
                 }
+                cache.set_history_by_id(history_id, payload)
+                return payload
             return None
 
 class ServerSet:

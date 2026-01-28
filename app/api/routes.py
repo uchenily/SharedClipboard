@@ -4,6 +4,7 @@ import json
 from flask import request, jsonify, send_file, Blueprint, render_template
 from config import config
 from app.db.database import ServerGet, ServerSet, add_history_item_from_json, init_db
+from app.db.cache import cache
 from app.models.models import BackupFile, ClipboardHistory, Folder, Favorite
 from sqlmodel import Session, select
 import os
@@ -170,6 +171,9 @@ def paste_image():
             session.commit()
             new_id = history_item.id
 
+        cache.invalidate_history()
+        cache.set_file_path(checksum, backup_path)
+
         if new_id:
             return jsonify({'success': True, 'id': new_id})
         else:
@@ -245,6 +249,9 @@ def paste_file():
             session.commit()
             new_id = history_item.id
 
+        cache.invalidate_history()
+        cache.set_file_path(checksum, backup_path)
+
         if new_id:
             return jsonify({'success': True, 'id': new_id})
         else:
@@ -263,6 +270,8 @@ def delete_record(uuid):
         with Session(engine) as session:
             # 查找记录
             record = session.exec(select(ClipboardHistory).where(ClipboardHistory.uuid == uuid)).first()
+            deleted_checksum = record.checksum if record else None
+            deleted_backup = False
 
             if not record:
                 return jsonify({'success': False, 'error': '记录不存在'}), 404
@@ -292,10 +301,15 @@ def delete_record(uuid):
 
                         # 删除备份文件记录
                         session.delete(backup_file)
+                        deleted_backup = True
 
             # 删除历史记录
             session.delete(record)
             session.commit()
+
+        cache.invalidate_history()
+        if deleted_backup and deleted_checksum:
+            cache.invalidate_file_path(deleted_checksum)
 
         return jsonify({'success': True, 'message': '记录已删除'})
 
